@@ -91,6 +91,11 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          double steering = j[1]["steering_angle"];
+
+          px += v*0.477*cos(psi)*0.1;
+          py += v*0.477*sin(psi)*0.1;
+          psi -= v*0.477/Lf*steering*0.1;
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -101,16 +106,43 @@ int main() {
           double steer_value;
           double throttle_value;
 
+          Eigen::VectorXd x(ptsx.size());
+          Eigen::VectorXd y(ptsy.size());
+          for(int i=0;i<ptsx.size();i++){
+            double dx = ptsx[i] - px;
+            double dy = ptsy[i] - py;
+            x[i] = dy*sin(psi)+dx*cos(psi);
+            y[i] = dy*cos(psi)-dx*sin(psi);
+          }
+          auto coeffs = polyfit(x,y,3) ;
+          //double cte = polyeval(coeffs,x);
+          double cte = polyeval(coeffs,0);
+          //double epsi =  -  atan(3*coeffs[3]*px*px+2*coeffs[2]*px+coeffs[1]);
+          double epsi =  -  atan(coeffs[1]);
+          Eigen::VectorXd state(6);
+          //state << px,py,psi,v*0.447,cte,epsi;
+          state << 0,0,0,v*0.477,cte,epsi;
+          auto vars = mpc.Solve(state,coeffs);
+          //steer_value = vars[delta_start];
+          //throttle_value = vars[a_start];
+
+          steer_value = vars[delta_start+2];
+          throttle_value = vars[a_start+2];
+
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value;
+
+          msgJson["steering_angle"] = steer_value/deg2rad(25);
           msgJson["throttle"] = throttle_value;
 
-          //Display the MPC predicted trajectory 
+          //Display the MPC predicted trajectory
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
-
+          for(int i=0;i<N;i++){
+            mpc_x_vals.push_back(vars[x_start+i]);
+            mpc_y_vals.push_back(vars[y_start+i]);
+          }
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
 
@@ -121,6 +153,13 @@ int main() {
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
+          for(int i=1;i<100;i++){
+
+            double x = i;
+            double y = polyeval(coeffs,x);
+            next_x_vals.push_back(x);
+            next_y_vals.push_back(y);
+          }
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
 

@@ -3,6 +3,35 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+## Project Description
+
+### Model
+Here in the project I used the bicycle model to simulate the car's motion.The states are x,y,$\psi$,v.Which represent the position,heading angle and the velocity.
+The actuators are a and $\delta$ which means acceleration and the steering angle.The update equations are written below:
+
+$$ x_t+1 = x_t + v_t*cos(\psi)*dt $$
+$$ y_t+1 = y_t + v_t*sin(\psi)*dt $$
+$$ psi_t+1 = psi_t + \frac{v_t}{L_f}\delta*dt $$
+$$ v_t+1 = v_t + a*dt $$
+
+###Timestep length and Elapsed Duration(N & dt)
+I set the `N` to be 30 in the project and `dt` to be 0.05.The `dt` and the `N` decide the time window we predict.If the time window is small,the calculation can be
+fast,but the actuation we get may not be so accurate.If the time window is too large,The calculation would be much expensive and it will cause extra latency.My choice
+can make the car drive smoothly in the path with low compute time.
+
+###Polynomial Fitting and MPC Preprocessing
+The waypoints was preprocessed by transforming to the car's coordinate.Then the fitting was calculate in the car's coordinate.The code is as below:
+```
+for(int i=0;i<ptsx.size();i++){
+    double dx = ptsx[i] - px;
+    double dy = ptsy[i] - py;
+    x[i] = dy*sin(psi)+dx*cos(psi);
+    y[i] = dy*cos(psi)-dx*sin(psi);
+}
+```
+###Model Predictive Control with Latency
+For the latency,I use the current motion state to predict the motion state 100 ms later by implementing the motion model.And use the predicted state as the initial state.
+
 ## Dependencies
 
 * cmake >= 3.5
